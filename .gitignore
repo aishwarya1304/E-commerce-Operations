@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Env & secrets
+.env
+
+# Generated outputs
+*.log
+logs/
+
+# Model (large binary)
+models/*.pkl
+
+# Generated data & images
+ecommerce_data.csv
+model_predictions.csv
+high_risk_orders.csv
+kpi_summary.csv
+*.png
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.dockerignore

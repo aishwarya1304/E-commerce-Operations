@@ -1,0 +1,38 @@
+{
+  "model_version": "1.0.0",
+  "trained_at": "2026-03-21T07:21:23.478564",
+  "algorithm": "RandomForestClassifier",
+  "n_estimators": 100,
+  "max_depth": 10,
+  "features": [
+    "distance_km",
+    "warehouse_load",
+    "order_items",
+    "past_delays",
+    "order_value",
+    "promised_delivery_days",
+    "warehouse_WH_East",
+    "warehouse_WH_North",
+    "warehouse_WH_South",
+    "warehouse_WH_West"
+  ],
+  "training_samples": 3500,
+  "test_samples": 1500,
+  "metrics": {
+    "accuracy": 0.6,
+    "precision": 0.6086,
+    "recall": 0.9606
+  },
+  "feature_importance": {
+    "order_value": 0.2385493956853547,
+    "distance_km": 0.21806196481649365,
+    "warehouse_load": 0.20796366389545945,
+    "order_items": 0.11712723735628008,
+    "past_delays": 0.08684106617876629,
+    "promised_delivery_days": 0.06144351649058871,
+    "warehouse_WH_North": 0.018552604255522354,
+    "warehouse_WH_South": 0.018378660822964406,
+    "warehouse_WH_West": 0.016962733270247263,
+    "warehouse_WH_East": 0.016119157228322956
+  }
+}

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Commerce Operations Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --border:  #334155;
+      --accent:  #6366f1;
+      --green:   #10b981;
+      --red:     #ef4444;
+      --amber:   #f59e0b;
+      --text:    #f1f5f9;
+      --muted:   #94a3b8;
+      --radius:  12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -.5px; }
+    header span { font-size: .75rem; color: var(--muted); }
+
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 64px);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2.5rem; width: 360px;
+    }
+    .login-card h2 { margin-bottom: 1.5rem; font-size: 1.3rem; }
+    .field { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1rem; }
+    .field label { font-size: .8rem; color: var(--muted); }
+    .field input {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: .6rem .9rem; font-size: .9rem;
+    }
+    .field input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .btn {
+      width: 100%; padding: .7rem; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff; font-weight: 600;
+      cursor: pointer; font-size: .9rem; transition: opacity .2s;
+    }
+    .btn:hover { opacity: .85; }
+    #login-error { color: var(--red); font-size: .8rem; margin-top: .6rem; text-align: center; }
+
+    #dashboard { display: none; padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+    /* ── KPI grid ───────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.4rem 1.2rem;
+    }
+    .kpi-card .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .5rem; }
+    .kpi-card .value { font-size: 2rem; font-weight: 700; }
+    .kpi-card .sub   { font-size: .72rem; color: var(--muted); margin-top: .25rem; }
+    .good  { color: var(--green); }
+    .bad   { color: var(--red); }
+    .warn  { color: var(--amber); }
+
+    /* ── Chart grid ─────────────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.4rem;
+    }
+    .chart-card h3 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+
+    /* ── High-risk table ────────────────────────────────────── */
+    .section-title {
+      font-size: .85rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: 1rem;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { color: var(--muted); font-weight: 500; text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    td { padding: .55rem .75rem; border-bottom: 1px solid #1e293b; }
+    tr:hover td { background: rgba(255,255,255,.03); }
+    .badge {
+      display: inline-block; padding: .2rem .55rem;
+      border-radius: 999px; font-size: .72rem; font-weight: 600;
+    }
+    .badge-high   { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-medium { background: rgba(245,158,11,.15); color: var(--amber); }
+    .badge-low    { background: rgba(16,185,129,.15); color: var(--green); }
+
+    /* ── Predict widget ─────────────────────────────────────── */
+    .predict-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .predict-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+    .predict-form h3 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .form-field label { display: block; font-size: .72rem; color: var(--muted); margin-bottom: .25rem; }
+    .form-field input, .form-field select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: .5rem .75rem; font-size: .85rem;
+    }
+    .predict-btn {
+      margin-top: 1rem; width: 100%; padding: .65rem;
+      border-radius: 8px; border: none; background: var(--accent);
+      color: #fff; font-weight: 600; cursor: pointer; font-size: .9rem;
+    }
+    .predict-result {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .predict-result .prob { font-size: 4rem; font-weight: 800; }
+    .predict-result .cat  { font-size: 1.1rem; font-weight: 600; margin: .5rem 0; }
+    .predict-result .hint { font-size: .8rem; color: var(--muted); text-align: center; max-width: 220px; }
+
+    #spinner { color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚚 E-Commerce Ops Dashboard</h1>
+  <span id="user-label"></span>
+</header>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <div class="field">
+      <label>Username</label>
+      <input id="username" type="text" placeholder="admin" value="admin"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="password" type="password" placeholder="admin123" value="admin123"/>
+    </div>
+    <button class="btn" onclick="login()">Sign in</button>
+    <div id="login-error"></div>
+    <p style="font-size:.75rem;color:var(--muted);margin-top:1rem;text-align:center">
+      Demo: admin / admin123 &nbsp;|&nbsp; analyst / analyst123
+    </p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card"><div class="label">On-Time Delivery</div><div class="value good" id="kpi-ontime">—</div><div class="sub">Target: 80%+</div></div>
+    <div class="kpi-card"><div class="label">SLA Breach Rate</div><div class="value bad"  id="kpi-breach">—</div><div class="sub">Target: &lt;15%</div></div>
+    <div class="kpi-card"><div class="label">Avg Delivery Days</div><div class="value warn" id="kpi-days">—</div><div class="sub">Target: 3.0 days</div></div>
+    <div class="kpi-card"><div class="label">Return Rate</div><div class="value warn" id="kpi-returns">—</div><div class="sub">Target: &lt;10%</div></div>
+    <div class="kpi-card"><div class="label">Avg Cost/Order</div><div class="value" id="kpi-cost">—</div><div class="sub">Target: ₹300</div></div>
+    <div class="kpi-card"><div class="label">Monthly Savings (AI)</div><div class="value good" id="kpi-savings">—</div><div class="sub">Estimated impact</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Delay Rate by City</h3><canvas id="chart-city" height="220"></canvas></div>
+    <div class="chart-card"><h3>Warehouse Performance</h3><canvas id="chart-wh" height="220"></canvas></div>
+  </div>
+
+  <!-- Predict widget -->
+  <div class="predict-grid">
+    <div class="predict-form">
+      <h3>🤖 Real-Time Delay Predictor</h3>
+      <div class="form-grid">
+        <div class="form-field"><label>Distance (km)</label><input id="p-dist" type="number" value="200" min="1" max="500"/></div>
+        <div class="form-field"><label>Warehouse Load</label><input id="p-load" type="number" value="150" min="50" max="250"/></div>
+        <div class="form-field"><label>Order Items</label><input id="p-items" type="number" value="3" min="1" max="15"/></div>
+        <div class="form-field"><label>Past Delays</label><input id="p-past" type="number" value="1" min="0" max="10"/></div>
+        <div class="form-field"><label>Order Value (₹)</label><input id="p-val" type="number" value="2000" min="100"/></div>
+        <div class="form-field"><label>Promised Days</label><input id="p-days" type="number" value="3" min="1" max="10"/></div>
+        <div class="form-field" style="grid-column:span 2">
+          <label>Warehouse</label>
+          <select id="p-wh">
+            <option value="WH_North">WH_North</option>
+            <option value="WH_South">WH_South</option>
+            <option value="WH_East">WH_East</option>
+            <option value="WH_West">WH_West</option>
+          </select>
+        </div>
+      </div>
+      <button class="predict-btn" onclick="runPredict()">Predict Delay Risk</button>
+    </div>
+    <div class="predict-result" id="predict-result">
+      <div style="color:var(--muted);font-size:.9rem">Fill in the form and click predict →</div>
+    </div>
+  </div>
+
+  <!-- High-risk orders table -->
+  <p class="section-title">⚠️ High-Risk Orders (Live)</p>
+  <div class="chart-card" style="margin-bottom:2rem">
+    <div id="spinner">Loading…</div>
+    <table id="risk-table" style="display:none">
+      <thead>
+        <tr><th>Order ID</th><th>City</th><th>Warehouse</th><th>Distance</th><th>Risk %</th><th>Category</th></tr>
+      </thead>
+      <tbody id="risk-tbody"></tbody>
+    </table>
+    <div id="no-risk" style="display:none;color:var(--muted);font-size:.85rem">No high-risk orders right now 🎉</div>
+  </div>
+
+</div><!-- /dashboard -->
+
+<script>
+  const API = '';   // empty = same origin; change to http://localhost:5000 if separate
+  let TOKEN = '';
+
+  // ── Auth ────────────────────────────────────────────────────────────────
+  async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    try {
+      const r = await fetch(`${API}/api/auth/login`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username, password})
+      });
+      const d = await r.json();
+      if (!r.ok) { document.getElementById('login-error').textContent = d.error || 'Login failed'; return; }
+      TOKEN = d.access_token;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display   = 'block';
+      document.getElementById('user-label').textContent    = `👤 ${d.username}`;
+      loadAll();
+    } catch(e) {
+      document.getElementById('login-error').textContent = 'Cannot reach API server';
+    }
+  }
+
+  function authHeaders() {
+    return { 'Content-Type':'application/json', 'Authorization': `Bearer ${TOKEN}` };
+  }
+
+  // ── Load everything ──────────────────────────────────────────────────────
+  async function loadAll() {
+    await Promise.all([loadKpis(), loadCityChart(), loadWarehouseChart(), loadHighRisk()]);
+  }
+
+  // ── KPIs ─────────────────────────────────────────────────────────────────
+  async function loadKpis() {
+    const [kpisR, finR] = await Promise.all([
+      fetch(`${API}/api/analytics/kpis`,             {headers: authHeaders()}),
+      fetch(`${API}/api/analytics/financial-impact`, {headers: authHeaders()}),
+    ]);
+    const kpis = await kpisR.json();
+    const fin  = await finR.json();
+
+    setText('kpi-ontime',  fmt(kpis.on_time_pct,  '%'));
+    setText('kpi-breach',  fmt(kpis.sla_breach_pct,'%'));
+    setText('kpi-days',    fmt(kpis.avg_delivery_days, ' days'));
+    setText('kpi-returns', fmt(kpis.return_rate_pct,   '%'));
+    setText('kpi-cost',    '₹' + fmt(kpis.avg_cost_per_order));
+    setText('kpi-savings', '₹' + num(fin.total_monthly_savings_inr));
+  }
+
+  function setText(id, v) { document.getElementById(id).textContent = v ?? '—'; }
+  function fmt(v, suffix='') { return v != null ? Number(v).toFixed(1) + suffix : '—'; }
+  function num(v) { return v != null ? Number(v).toLocaleString('en-IN') : '—'; }
+
+  // ── City chart ────────────────────────────────────────────────────────────
+  async function loadCityChart() {
+    const r    = await fetch(`${API}/api/analytics/city-analysis`, {headers: authHeaders()});
+    const data = await r.json();
+    const labels = data.map(d => d.city);
+    const values = data.map(d => d.delay_rate_pct);
+
+    new Chart(document.getElementById('chart-city'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Delay Rate (%)',
+          data: values,
+          backgroundColor: values.map(v => v > 40 ? '#ef4444bb' : v > 30 ? '#f59e0bbb' : '#10b981bb'),
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+          y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => v+'%' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── Warehouse chart ───────────────────────────────────────────────────────
+  async function loadWarehouseChart() {
+    const r    = await fetch(`${API}/api/analytics/warehouse-perf`, {headers: authHeaders()});
+    const data = await r.json();
+
+    new Chart(document.getElementById('chart-wh'), {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.name || d.warehouse_id),
+        datasets: [{
+          label: 'Delay Rate (%)',
+          data: data.map(d => d.delay_rate_pct),
+          backgroundColor: '#6366f1bb',
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => v+'%' }, beginAtZero: true },
+          y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+  }
+
+  // ── High-risk table ───────────────────────────────────────────────────────
+  async function loadHighRisk() {
+    const r    = await fetch(`${API}/api/orders/high-risk`, {headers: authHeaders()});
+    const data = await r.json();
+    const tbody = document.getElementById('risk-tbody');
+    const spinner = document.getElementById('spinner');
+    const table   = document.getElementById('risk-table');
+    const noRisk  = document.getElementById('no-risk');
+
+    spinner.style.display = 'none';
+    const orders = data.orders || [];
+    if (!orders.length) { noRisk.style.display = 'block'; return; }
+
+    table.style.display = 'table';
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td><code style="color:var(--accent)">${o.order_id}</code></td>
+        <td>${o.city}</td>
+        <td>${o.warehouse_id}</td>
+        <td>${o.distance_km} km</td>
+        <td><strong>${(o.delay_probability*100).toFixed(1)}%</strong></td>
+        <td><span class="badge badge-${o.risk_category.toLowerCase()}">${o.risk_category}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  // ── Predict widget ────────────────────────────────────────────────────────
+  async function runPredict() {
+    const payload = {
+      distance_km:            +document.getElementById('p-dist').value,
+      warehouse_load:         +document.getElementById('p-load').value,
+      order_items:            +document.getElementById('p-items').value,
+      past_delays:            +document.getElementById('p-past').value,
+      order_value:            +document.getElementById('p-val').value,
+      promised_delivery_days: +document.getElementById('p-days').value,
+      warehouse_id:            document.getElementById('p-wh').value,
+    };
+    const result = document.getElementById('predict-result');
+    result.innerHTML = '<div style="color:var(--muted)">Calculating…</div>';
+
+    try {
+      const r = await fetch(`${API}/api/predictions/single`, {
+        method:'POST', headers: authHeaders(), body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      const pct  = (d.delay_probability * 100).toFixed(1);
+      const cat  = d.risk_category;
+      const colour = cat==='High' ? 'var(--red)' : cat==='Medium' ? 'var(--amber)' : 'var(--green)';
+      const hint = cat==='High'   ? 'Assign priority carrier & alert customer proactively.'
+                 : cat==='Medium' ? 'Monitor closely. Consider early dispatch.'
+                                  : 'Order looks healthy. Standard processing.';
+      result.innerHTML = `
+        <div class="prob" style="color:${colour}">${pct}%</div>
+        <div class="cat"  style="color:${colour}">${cat} Risk</div>
+        <div class="hint">${hint}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.75rem">Model: ${d.model_version}</div>
+      `;
+    } catch(e) {
+      result.innerHTML = '<div style="color:var(--red)">Prediction failed — is the API running?</div>';
+    }
+  }
+
+  // Allow Enter key on login
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') login();
+  });
+</script>
+</body>
+</html>
